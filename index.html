@@ -2,9 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Foto Kita Blur - TikTok Trend</title>
-    <!-- MediaPipe Hands CDN (Opsional untuk AI) -->
+    <!-- MediaPipe Hands CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <style>
@@ -12,31 +12,30 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
 
-        body {
+        body, html {
+            width: 100%;
+            height: 100%;
+            height: 100dvh; /* Mobile viewport height fix */
             background-color: #000;
-            color: #ffffff;
+            color: #fff;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            height: 100vh;
-            width: 100vw;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
+            position: fixed;
         }
 
-        .camera-container {
+        .camera-wrapper {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #05070c;
+            background: #000;
             overflow: hidden;
-            cursor: pointer;
         }
 
         /* Video Webcam */
@@ -44,175 +43,233 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1);
-            transition: filter 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+            transform: scaleX(-1); /* Cermin */
+            transition: filter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s ease;
         }
 
-        /* Efek Blur GPU 120 FPS */
+        /* Efek Blur GPU 60-120 FPS */
         video#webcam.blurred {
-            filter: blur(28px) brightness(0.88) contrast(1.1);
-            transform: scaleX(-1) scale(1.05);
+            filter: blur(25px) brightness(0.85) contrast(1.1);
+            transform: scaleX(-1) scale(1.08);
         }
 
-        /* Overlay Lirik Teks Estetik */
-        .lyrics-overlay {
+        /* Top Bar Info */
+        .top-bar {
             position: absolute;
-            bottom: 14%;
-            left: 50%;
-            transform: translateX(-50%) translateY(30px) scale(0.95);
-            font-family: 'Georgia', 'Playfair Display', serif, cursive;
-            font-style: italic;
-            font-size: clamp(2.2rem, 5.5vw, 3.8rem);
-            color: rgba(255, 255, 255, 0.96);
-            text-shadow: 0 4px 30px rgba(0, 0, 0, 0.9), 0 0 15px rgba(255, 182, 193, 0.5);
-            letter-spacing: 2px;
-            opacity: 0;
+            top: env(safe-area-inset-top, 16px);
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 30;
             pointer-events: none;
-            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 10;
-            text-align: center;
-            white-space: nowrap;
         }
 
-        .lyrics-overlay.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0) scale(1);
-        }
-
-        /* Header Info Badge */
-        .status-badge {
-            position: absolute;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(10, 15, 25, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            padding: 10px 24px;
-            border-radius: 50px;
-            font-size: 0.95rem;
+        .status-pill {
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
             display: flex;
             align-items: center;
-            gap: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            z-index: 20;
+            gap: 8px;
+            max-width: 92%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
         }
 
         .dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background-color: #22c55e;
-            box-shadow: 0 0 10px #22c55e;
-            transition: all 0.3s;
+            box-shadow: 0 0 8px #22c55e;
+            flex-shrink: 0;
         }
 
         .dot.active {
             background-color: #ec4899;
-            box-shadow: 0 0 16px #ec4899;
-            transform: scale(1.3);
+            box-shadow: 0 0 12px #ec4899;
         }
 
-        /* Bottom Controls */
-        .controls {
+        .hint-text {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.65);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        /* Overlay Lirik Teks Estetik */
+        .lyrics-container {
             position: absolute;
-            bottom: 30px;
+            bottom: 22%;
+            left: 0;
+            right: 0;
             display: flex;
-            gap: 14px;
+            justify-content: center;
+            pointer-events: none;
             z-index: 20;
+            padding: 0 16px;
         }
 
-        .btn-action {
-            background: rgba(255, 255, 255, 0.18);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.28);
-            color: #fff;
-            padding: 12px 22px;
-            border-radius: 30px;
-            font-size: 0.95rem;
-            font-weight: 600;
+        .lyrics-text {
+            font-family: 'Georgia', 'Playfair Display', serif, cursive;
+            font-style: italic;
+            font-size: clamp(1.8rem, 7vw, 3.2rem);
+            color: #ffffff;
+            text-shadow: 0 4px 25px rgba(0, 0, 0, 0.9), 0 0 15px rgba(255, 182, 193, 0.6);
+            letter-spacing: 1px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: nowrap;
+        }
+
+        .lyrics-text.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        /* Bottom Controls (TikTok / IG Reels Style) */
+        .bottom-bar {
+            position: absolute;
+            bottom: env(safe-area-inset-bottom, 20px);
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            z-index: 30;
+            gap: 12px;
+        }
+
+        /* Shutter Trigger Button (Paling Besar di Tengah) */
+        .shutter-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 4px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .shutter-inner {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #ffffff;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            font-size: 1.5rem;
         }
 
-        .btn-action:hover {
-            background: rgba(255, 255, 255, 0.35);
-            transform: translateY(-2px);
+        .shutter-btn.active {
+            border-color: #ec4899;
+            transform: scale(1.08);
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.8);
         }
 
-        .btn-action.active {
+        .shutter-btn.active .shutter-inner {
             background: #ec4899;
-            border-color: #f472b6;
-            box-shadow: 0 0 25px rgba(236, 72, 153, 0.7);
+            transform: scale(0.85);
         }
 
-        /* Floating aesthetic hearts */
+        /* Side Action Buttons */
+        .side-btn {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .side-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Floating Hearts Animation */
         .heart {
             position: absolute;
             font-size: 2.2rem;
             opacity: 0;
-            animation: floatUp 1.8s ease-out forwards;
+            animation: floatUp 1.6s ease-out forwards;
             pointer-events: none;
-            z-index: 15;
+            z-index: 25;
         }
 
         @keyframes floatUp {
             0% {
                 opacity: 1;
-                transform: translateY(0) scale(0.6) rotate(0deg);
+                transform: translateY(0) scale(0.5);
             }
             100% {
                 opacity: 0;
-                transform: translateY(-130px) scale(1.4) rotate(25deg);
+                transform: translateY(-140px) scale(1.3) rotate(20deg);
             }
-        }
-
-        /* Touch / Trigger Hint */
-        .tap-hint {
-            position: absolute;
-            top: 75px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.6);
-            letter-spacing: 0.5px;
-            pointer-events: none;
-            text-align: center;
-            z-index: 18;
         }
     </style>
 </head>
 <body>
 
-    <div class="camera-container" id="cameraView">
-        <!-- Live Webcam -->
+    <div class="camera-wrapper" id="cameraWrapper">
+        <!-- Live Camera Feed -->
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="hiddenCanvas" style="display:none;" width="160" height="120"></canvas>
 
-        <!-- Status Badge -->
-        <div class="status-badge" id="statusBadge">
-            <div class="dot" id="statusDot"></div>
-            <span id="statusText">Kamera Aktif • Angkat Pose ✌️ atau Tekan Spasi</span>
+        <!-- Top Header Status -->
+        <div class="top-bar">
+            <div class="status-pill">
+                <div class="dot" id="statusDot"></div>
+                <span id="statusText">Kamera Siap • Pose ✌️ atau Tekan Tombol</span>
+            </div>
+            <div class="hint-text">💡 Tap layar / tombol bulat di bawah untuk On/Off</div>
         </div>
 
-        <div class="tap-hint">💡 Klik layar / tekan Spasi kapan saja untuk langsung ON/OFF</div>
+        <!-- Floating Lyric Text Overlay -->
+        <div class="lyrics-container">
+            <div class="lyrics-text" id="lyricsText">foto kita blur ~</div>
+        </div>
 
-        <!-- Floating Lyric Text -->
-        <div class="lyrics-overlay" id="lyrics">foto kita blur ~</div>
-
-        <!-- Bottom Controls -->
-        <div class="controls">
-            <button class="btn-action" id="toggleBlurBtn">
-                <span>✌️</span> <span id="btnText">Tombol Blur (Spasi)</span>
+        <!-- Bottom Controls Bar (Mobile Friendly) -->
+        <div class="bottom-bar">
+            <!-- Tombol Ganti Kamera Depan/Belakang -->
+            <button class="side-btn" id="flipCameraBtn" title="Ganti Kamera">
+                🔄
             </button>
-            <button class="btn-action" id="modeBtn">
-                <span id="modeIcon">⚡</span> <span id="modeText">Mode: Sensitif ✌️</span>
+
+            <!-- Tombol Utama Shutter / Blur -->
+            <div class="shutter-btn" id="mainShutterBtn">
+                <div class="shutter-inner" id="shutterInner">✌️</div>
+            </div>
+
+            <!-- Tombol Musik On/Off -->
+            <button class="side-btn" id="musicToggleBtn" title="Audio">
+                🎵
             </button>
         </div>
     </div>
@@ -227,40 +284,51 @@
 
     <script>
         const video = document.getElementById('webcam');
-        const lyrics = document.getElementById('lyrics');
-        const statusBadge = document.getElementById('statusBadge');
+        const lyricsText = document.getElementById('lyricsText');
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const bgm = document.getElementById('bgm');
-        const toggleBlurBtn = document.getElementById('toggleBlurBtn');
-        const modeBtn = document.getElementById('modeBtn');
-        const cameraView = document.getElementById('cameraView');
+        const shutterBtn = document.getElementById('mainShutterBtn');
+        const flipCameraBtn = document.getElementById('flipCameraBtn');
+        const musicToggleBtn = document.getElementById('musicToggleBtn');
+        const cameraWrapper = document.getElementById('cameraWrapper');
         const hiddenCanvas = document.getElementById('hiddenCanvas');
         const ctx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
 
         let isBlurred = false;
         let isManualActive = false;
-        let aiLoaded = false;
-        let isHighSensitivity = true;
+        let currentFacingMode = "user"; // Depan (user) atau Belakang (environment)
+        let currentStream = null;
 
-        // 1. Inisialisasi Kamera Browser (Zero Latency)
-        async function startCamera() {
+        // 1. Inisialisasi Kamera Mobile Responsive
+        async function startCamera(facing = "user") {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
+                        facingMode: facing,
                         width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: "user"
+                        height: { ideal: 720 }
                     },
                     audio: false
                 });
+                currentStream = stream;
                 video.srcObject = stream;
-                
-                // Mulai deteksi gestur
+
+                // Atur cermin sesuai kamera depan/belakang
+                if (facing === "user") {
+                    video.style.transform = "scaleX(-1)";
+                } else {
+                    video.style.transform = "scaleX(1)";
+                }
+
                 startInstantGestureDetector();
                 initMediaPipe();
             } catch (err) {
-                console.error("Gagal membuka kamera:", err);
+                console.error("Camera error:", err);
                 statusText.innerText = "Izinkan akses kamera di browser";
                 statusDot.style.backgroundColor = "#ef4444";
             }
@@ -273,91 +341,69 @@
 
             if (active) {
                 video.classList.add('blurred');
-                lyrics.classList.add('show');
+                lyricsText.classList.add('show');
                 statusDot.classList.add('active');
-                statusText.innerText = "✨ Foto Kita Blur (✌️ Aktif)";
-                toggleBlurBtn.classList.add('active');
-                
-                // Putar Lagu seketika
-                bgm.play().catch(e => {
-                    console.log("Klik layar 1x agar browser mengizinkan audio.");
-                });
-                
-                createHeart();
+                statusText.innerText = "✨ Foto Kita Blur (Aktif)";
+                shutterBtn.classList.add('active');
+
+                // Putar Lagu
+                bgm.play().catch(() => {});
+                createHearts();
             } else {
                 video.classList.remove('blurred');
-                lyrics.classList.remove('show');
+                lyricsText.classList.remove('show');
                 statusDot.classList.remove('active');
-                statusText.innerText = "Kamera Aktif • Angkat Pose ✌️ atau Tekan Spasi";
-                toggleBlurBtn.classList.remove('active');
-                
+                statusText.innerText = "Kamera Siap • Pose ✌️ atau Tekan Tombol";
+                shutterBtn.classList.remove('active');
+
                 // Hentikan Lagu
                 bgm.pause();
                 bgm.currentTime = 0;
             }
         }
 
-        function createHeart() {
+        function createHearts() {
             if (!isBlurred) return;
             const heart = document.createElement('div');
             heart.classList.add('heart');
-            const icons = ['🌸', '✨', '💖', '✌️', '💫'];
-            heart.innerText = icons[Math.floor(Math.random() * icons.length)];
-            heart.style.left = (Math.random() * 80 + 10) + '%';
-            heart.style.bottom = '25%';
-            cameraView.appendChild(heart);
-            setTimeout(() => heart.remove(), 1800);
+            const emojis = ['🌸', '✨', '💖', '✌️', '💫'];
+            heart.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+            heart.style.left = (Math.random() * 70 + 15) + '%';
+            heart.style.bottom = '30%';
+            cameraWrapper.appendChild(heart);
+            setTimeout(() => heart.remove(), 1600);
         }
 
-        // 3. DETEKTOR GESTUR INSTAN (0.001 Detik / Zero Delay)
-        // Bekerja langsung di canvas tanpa perlu nunggu loading CDN
-        let prevPixels = null;
+        // 3. Detektor Gestur Instan (Super Cepat di HP)
         function startInstantGestureDetector() {
             setInterval(() => {
                 if (isManualActive || !video.videoWidth) return;
 
-                // Jika MediaPipe sudah aktif mendeteksi, serahkan ke MediaPipe
-                if (aiLoaded) return;
-
-                // Analisis gestur tangan mendekat / mengangkat pose ke kamera
                 ctx.drawImage(video, 0, 0, 160, 120);
                 const frame = ctx.getImageData(0, 0, 160, 120);
                 const data = frame.data;
                 
-                let skinPixels = 0;
                 let topHalfSkin = 0;
-
                 for (let i = 0; i < data.length; i += 16) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    // Deteksi warna kulit / telapak tangan & gestur di depan kamera
-                    if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 10) {
-                        skinPixels++;
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    if (r > 65 && g > 45 && b > 25 && r > g && r > b && (r - g) > 10) {
                         const pixelIndex = i / 4;
                         const y = Math.floor(pixelIndex / 160);
-                        if (y < 60) {
-                            topHalfSkin++; // Bagian atas (tangan diangkat)
-                        }
+                        if (y < 60) topHalfSkin++;
                     }
                 }
 
-                // Threshold gestur tangan diangkat
-                const threshold = isHighSensitivity ? 65 : 120;
-                if (topHalfSkin > threshold) {
+                if (topHalfSkin > 75) {
                     setBlurState(true);
                 } else {
                     setBlurState(false);
                 }
-            }, 60); // Cek setiap 60ms (sangat responsif & super ringan)
+            }, 70);
         }
 
-        // 4. MediaPipe Hands (Deteksi Jari ✌️ yang Akurat & Fleksibel)
+        // 4. MediaPipe Hands (Deteksi Jari ✌️)
         function initMediaPipe() {
-            if (typeof Hands === 'undefined') {
-                return;
-            }
+            if (typeof Hands === 'undefined') return;
 
             try {
                 const hands = new Hands({
@@ -367,36 +413,24 @@
                 hands.setOptions({
                     maxNumHands: 1,
                     modelComplexity: 0,
-                    minDetectionConfidence: 0.35, // Dibuat sangat sensitif agar tidak delay
+                    minDetectionConfidence: 0.35,
                     minTrackingConfidence: 0.35
                 });
 
                 hands.onResults((results) => {
-                    aiLoaded = true; // AI aktif
                     if (isManualActive) return;
-
                     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                         const lm = results.multiHandLandmarks[0];
-                        
-                        // Jarak jari telunjuk (8) dan tengah (12) ke pergelangan tangan (0)
                         const wrist = lm[0];
                         const distIndex = Math.hypot(lm[8].x - wrist.x, lm[8].y - wrist.y);
                         const distMiddle = Math.hypot(lm[12].x - wrist.x, lm[12].y - wrist.y);
-                        const distRing = Math.hypot(lm[16].x - wrist.x, lm[16].y - wrist.y);
-                        const distPinky = Math.hypot(lm[20].x - wrist.x, lm[20].y - wrist.y);
 
-                        // Cek apakah pose ✌️ (Telunjuk & tengah lebih panjang / tegak)
-                        const isPeace = (distIndex > 0.25 && distMiddle > 0.25);
-                        
-                        if (isPeace) {
+                        if (distIndex > 0.22 && distMiddle > 0.22) {
                             setBlurState(true);
                             return;
                         }
                     }
-                    
-                    if (!isManualActive) {
-                        setBlurState(false);
-                    }
+                    if (!isManualActive) setBlurState(false);
                 });
 
                 const camera = new Camera(video, {
@@ -407,13 +441,11 @@
                     height: 360
                 });
                 camera.start();
-            } catch(e) {
-                console.log("Menggunakan Instant Fallback Gesture Detector.");
-            }
+            } catch(e) {}
         }
 
-        // 5. KONTROL MANUAL (KLIK LAYAR, SPASI, TOMBOL)
-        function toggleBlurManual() {
+        // 5. Interaksi Tap & Tombol
+        function toggleManual() {
             isManualActive = !isManualActive;
             if (isManualActive) {
                 setBlurState(true);
@@ -422,34 +454,48 @@
             }
         }
 
-        // Klik Tombol
-        toggleBlurBtn.addEventListener('click', (e) => {
+        // Tombol Bulat Shutter
+        shutterBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            toggleBlurManual();
+            toggleManual();
         });
 
-        // Mode Sensitivitas
-        modeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            isHighSensitivity = !isHighSensitivity;
-            document.getElementById('modeText').innerText = isHighSensitivity ? "Mode: Sensitif ✌️" : "Mode: Normal";
-        });
-
-        // Tekan SPASI di Keyboard (Instan 0ms)
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                toggleBlurManual();
+        // Tap di Layar Mana Saja
+        cameraWrapper.addEventListener('click', (e) => {
+            if (e.target === cameraWrapper || e.target === video) {
+                toggleManual();
             }
         });
 
-        // Klik Layar Langsung
-        cameraView.addEventListener('click', () => {
-            toggleBlurManual();
+        // Keyboard Spasi (Laptop)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleManual();
+            }
         });
 
-        // Mulai kamera saat pertama dimuat
-        startCamera();
+        // Ganti Kamera Depan / Belakang
+        flipCameraBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        });
+
+        // Tombol Musik
+        musicToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (bgm.paused) {
+                bgm.play();
+                musicToggleBtn.style.borderColor = "#ec4899";
+            } else {
+                bgm.pause();
+                musicToggleBtn.style.borderColor = "rgba(255,255,255,0.2)";
+            }
+        });
+
+        // Mulai kamera
+        startCamera("user");
     </script>
 </body>
 </html>
